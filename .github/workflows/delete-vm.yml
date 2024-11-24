@@ -1,0 +1,41 @@
+name: Delete ephemeral GCE VM
+
+on:
+  workflow_call:
+    inputs:
+      runner-label:
+        type: string
+        required: true
+      machine-zone:
+        type: string
+        required: true
+
+    secrets:
+      gcp_credentials:
+        required: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    name: Delete ephemeral GCE VM
+    steps:
+      - id: auth
+        name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.gcp_credentials }}
+      - id: gcloud-auth
+        name: Destroy GCE VM
+        shell: bash
+        run: |
+          set -x
+
+          echo "Removing GCE VM..."
+
+          gcloud auth activate-service-account --key-file ${{ steps.auth.outputs.credentials_file_path }}
+          if [ -z "$(gcloud compute instances list | grep "${{ inputs.runner-label }}")" ]; then
+            # vm is gone
+            exit 0
+          fi
+
+          gcloud compute instances delete ${{ inputs.runner-label }} --quiet --zone ${{ inputs.machine-zone }}
